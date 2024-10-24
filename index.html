@@ -10,9 +10,106 @@
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <style>
-        /* ... Previous styles remain the same ... */
-
-        /* Add new styles for API section */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Roboto', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 70vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            width: 100%;
+            background-color: #f0f0f0;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            position: relative;
+        }
+        h1 {
+            color: #333333;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 20px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #FF0000;
+        }
+        #extractButton {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            background-color: #FF0000;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.1s;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        #extractButton:hover {
+            background-color: #CC0000;
+        }
+        #extractButton:active {
+            transform: scale(0.98);
+        }
+        #result {
+            display: none;
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #f8f8f8;
+            border-radius: 4px;
+            font-size: 16px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: opacity 0.3s ease;
+        }
+        #downloadButton {
+            display: none;
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+        #downloadButton:hover {
+            background-color: #45a049;
+        }
+        #commentsList {
+            list-style-type: none;
+            padding: 0;
+            margin-top: 20px;
+        }
+        #commentsList li {
+            background-color: #fff;
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
         .api-section {
             margin-top: 30px;
             border-top: 1px solid #ddd;
@@ -60,6 +157,14 @@
             color: #666;
             margin-top: 5px;
             padding: 0 10px;
+        }
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 24px;
+            }
+            input[type="text"], #extractButton {
+                font-size: 14px;
+            }
         }
     </style>
 </head>
@@ -160,9 +265,6 @@
             fetchComments(videoId, apiKey);
         }
 
-        // ... Rest of the previous JavaScript functions remain the same ...
-
-        // Modify the error handling in fetchComments to show API section
         function fetchComments(videoId, apiKey, pageToken = '') {
             fetch(`https://www.googleapis.com/youtube/v3/commentThreads?part=snippet&videoId=${videoId}&maxResults=100&pageToken=${pageToken}&key=${apiKey}`)
                 .then(response => response.json())
@@ -202,7 +304,85 @@
                 });
         }
 
-        // ... Rest of the previous JavaScript functions remain the same ...
+        function processComments() {
+            // Remove HTML tags
+            comments = comments.map(comment => comment.replace(/<[^>]*>/g, ''));
+
+            // Remove duplicates
+            comments = [...new Set(comments)];
+
+            // Remove comments with links and apply basic spam filter
+            comments = comments.filter(comment => {
+                const lowerComment = comment.toLowerCase();
+                return !containsLink(comment) && !isLikelySpam(lowerComment);
+            });
+        }
+
+        function containsLink(text) {
+            const urlRegex = /(https?:\/\/[^\s]+)/g;
+            return urlRegex.test(text);
+        }
+
+        function isLikelySpam(text) {
+            const spamKeywords = ['subscribe', 'check out my channel', 'follow me', 'sub4sub', 'sub 4 sub'];
+            return spamKeywords.some(keyword => text.includes(keyword));
+        }
+
+        function extractVideoId(url) {
+            const regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(shorts\/)|(watch\?))\??v?=?([^#&?]*).*/;
+            const match = url.match(regExp);
+            return (match && match[8].length == 11) ? match[8] : false;
+        }
+
+        function displayComments() {
+            const resultElement = document.getElementById('result');
+            const commentsCountElement = document.getElementById('commentsCount');
+            const commentsListElement = document.getElementById('commentsList');
+            const downloadButton = document.getElementById('downloadButton');
+
+            commentsCountElement.textContent = `Total Comments (after filtering): ${comments.length}`;
+            commentsListElement.innerHTML = '';
+
+            comments.slice(0, 10).forEach(comment => {
+                const li = document.createElement('li');
+                li.textContent = comment;
+                commentsListElement.appendChild(li);
+            });
+
+            if (comments.length > 10) {
+                const li = document.createElement('li');
+                li.textContent = '...';
+                commentsListElement.appendChild(li);
+            }
+
+            resultElement.style.display = 'block';
+            downloadButton.style.display = 'block';
+        }
+
+        function showResult(message) {
+            const resultElement = document.getElementById('result');
+            const commentsCountElement = document.getElementById('commentsCount');
+            const commentsListElement = document.getElementById('commentsList');
+            const downloadButton = document.getElementById('downloadButton');
+
+            resultElement.style.display = 'block';
+            commentsCountElement.textContent = message;
+            commentsListElement.innerHTML = '';
+            downloadButton.style.display = 'none';
+        }
+
+        function downloadCSV() {
+            const csv = Papa.unparse(comments.map(comment => [comment]));
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            if (navigator.msSaveBlob) {
+                navigator.msSaveBlob(blob, 'comments.csv');
+            } else {
+                link.href = URL.createObjectURL(blob);
+                link.download = 'comments.csv';
+                link.click();
+            }
+        }
     </script>
 </body>
 </html>
